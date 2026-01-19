@@ -1,7 +1,6 @@
 # GraphicFingerprint
 
-CLI-утилита для генерации ASCII-art визуального fingerprint ключей  
-на основе алгоритма Drunken bishop (пьяный слон) – используется в `ssh-keygen`.
+CLI-утилита для генерации ASCII-art визуального fingerprint ключей на основе алгоритма Drunken bishop (пьяный слон) – используется в `ssh-keygen`.
 
 Утилита предназначена для визуального сравнения fingerprint-ов человеком.
 
