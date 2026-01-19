@@ -119,6 +119,7 @@ def render_ascii(
     end: Tuple[int, int],
     title: str = "",
     border: bool = True,
+    color: bool = False,
 ) -> str:
     height = len(field)
     width = len(field[0]) if height else 0
@@ -126,13 +127,27 @@ def render_ascii(
     max_count = max(max(row) for row in field) or 1
     gamma = GAMMA
 
-    def map_symbol(count: int) -> str:
+    def map_symbol(count: int) -> tuple[str, int]:
         if count == 0:
-            return " "
+            return " ", 0
         norm = count / max_count
         level = int((norm**gamma) * (len(PALETTE) - 1))
         level = min(level, len(PALETTE) - 1)
-        return PALETTE[level]
+        return PALETTE[level], level
+
+    def colorize(ch: str, level: int) -> str:
+        if not color or ch in (" ", "S", "E"):
+            return ch
+
+        if level <= 1:
+            code = "97"
+            return f"\033[{code}m{ch}\033[0m"
+        elif level <= 3:
+            code = "90"
+            return f"\033[{code}m{ch}\033[0m"
+        else:
+            code = "38;5;220"
+            return f"\033[{code}m{ch}\033[0m"
 
     lines: List[str] = []
 
@@ -153,7 +168,8 @@ def render_ascii(
             elif (x, y) == (ex, ey):
                 ch = "E"
             else:
-                row_chars.append(map_symbol(field[y][x]))
+                ch, level = map_symbol(field[y][x])
+                row_chars.append(colorize(ch, level))
                 continue
             row_chars.append(ch)
 
@@ -211,11 +227,6 @@ def main(argv: List[str]) -> int:
     )
     p.add_argument("--width", type=int, default=17)
     p.add_argument("--height", type=int, default=9)
-    p.add_argument("--no-border", action="store_true")
-    p.add_argument(
-        "--show-digest",
-        action="store_true",
-    )
     p.add_argument(
         "--sym",
         choices=["none", "x", "y", "xy"],
@@ -224,6 +235,11 @@ def main(argv: List[str]) -> int:
     p.add_argument(
         "--sym-auto",
         action="store_true",
+    )
+    p.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
     )
 
     args = p.parse_args(argv)
@@ -234,6 +250,12 @@ def main(argv: List[str]) -> int:
     try:
         info = build_input_info(args)
         field, start, end = drunken_bishop(info.digest, args.width, args.height)
+
+        use_color = False
+        if args.color == "always":
+            use_color = True
+        elif args.color == "auto":
+            use_color = sys.stdout.isatty()
 
         mode = args.sym
         if args.sym_auto:
@@ -249,12 +271,8 @@ def main(argv: List[str]) -> int:
         else:
             title = f"HEX ({len(info.digest)} bytes)"
 
-        out = render_ascii(field, start, end, title=title, border=not args.no_border)
+        out = render_ascii(field, start, end, title=title, color=use_color)
         print(out)
-
-        if args.show_digest and info.source == "pubkey":
-            print()
-            print("digest(hex):", binascii.hexlify(info.digest).decode("ascii"))
 
         return 0
 
